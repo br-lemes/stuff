@@ -18,6 +18,11 @@
 # 13-04-2012 Suporte experimental a PPPoE
 # 14-04-2012 Suporte funcional a PPPoE sobre wireless. Porém lida somente com
 #            PPPoE, a conexão wireless precisa já estar estabelecida.
+# 15-04-2012 * Especificado dsl-provider ao pon, o padrão é provider e eu tinha
+#              um link para facilitar digitar na linha de comando, mas é mais
+#              correto usar o comando completo; e
+#            * Não escreve desnecessariamente em dsl-provider se wlan* já
+#              corretamente lá.
 #
 # Licença: WTFPL
 #
@@ -57,8 +62,9 @@ PPP=0
 if echo "$1" | grep '^wlan[0-9]\+$' > /dev/null; then
 	PPP=1
 	WLAN="$1"
-	sudo sed -i "s/^nic-wlan[0-9]\+$/nic-$WLAN/" /etc/ppp/peers/dsl-provider
-	! pidof pppd > /dev/null && pon > /dev/null
+	! grep -q $WLAN /etc/ppp/peers/dsl-provider && \
+		sudo sed -i "s/^nic-wlan[0-9]\+$/nic-$WLAN/" /etc/ppp/peers/dsl-provider
+	! pidof pppd > /dev/null && pon dsl-provider > /dev/null
 fi
 
 # Inicia o mplayer pausado e controlado por um fifo
@@ -81,11 +87,11 @@ while true; do
 		if test ! "$PPP" = "0"; then # Se PPPoE tenta reavivar a conexão e a rota
 			if pidof pppd > /dev/null; then
 				if ! route -n | grep ppp | grep UG > /dev/null; then
-					gw=$(ifconfig ppp0 | grep P-a-P | cut -d : -f 3 | cut -d ' ' -f 1)
+					gw=$(ifconfig ppp0 2> /dev/null | grep P-a-P | cut -d : -f 3 | cut -d ' ' -f 1)
 					[ $gw ] && sudo route add default gw "$gw"
 				fi
 			else
-				pon > /dev/null
+				pon dsl-provider > /dev/null
 			fi
 		fi
 	fi
