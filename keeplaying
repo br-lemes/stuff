@@ -1,0 +1,92 @@
+#!/bin/sh
+#
+# Copyright (c) 2012 Breno Ramalho Lemes <breno@br-lemes.net>
+# http://www.br-lemes.net/
+#
+# É um keepalive musical. Deixa o som rolar enquanto tiver uma conexão de
+# Internet. Se cair a conexão para de tocar e espera pela conexão para
+# começar tudo de novo.
+#
+# Se você usa PPPoE sobre wireless também vai tentar restabelecer o pppd e
+# a maldita rota que vive desaparecendo do mapa. Aceita um parâmetro na linha
+# de comando para receber a wlan certa (o parâmetro precisa estar no formato
+# wlan*, onde * é o número da interface).
+#
+# Histórico:
+#
+# 12-04-2012 Versão inicial
+# 13-04-2012 Suporte experimental a PPPoE
+# 14-04-2012 Suporte funcional a PPPoE sobre wireless. Porém lida somente com
+#            PPPoE, a conexão wireless precisa já estar estabelecida.
+#
+# Licença: WTFPL
+#
+#            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+#                    Version 2, December 2004
+#
+# Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
+#
+# Everyone is permitted to copy and distribute verbatim or modified
+# copies of this license document, and changing it is allowed as long
+# as the name is changed.
+#
+#            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+#   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+#
+#  0. You just DO WHAT THE FUCK YOU WANT TO.
+#
+################################################################################
+#
+# Configurações
+#
+IP=8.8.8.8                        # IP para pingar
+MUSIC=$HOME/Música/Paranoid.mp3   # Música para tocar
+FIFO=$HOME/.mplayer/fifo          # MPlayer fifo
+#
+################################################################################
+#
+# Restante do código
+#
+PPP=0
+
+# Se passar mais que um parâmetro sai silenciosamente
+[ "$#" -gt "1" ] && exit 
+
+# Se o parâmetro 1 for wlan* (onde * são apenas números), ativa PPPoE e
+# acerta o dsl-provider com a interface certa e tenta conectar
+if echo "$1" | grep '^wlan[0-9]\+$' > /dev/null; then
+	PPP=1
+	WLAN="$1"
+	sudo sed -i "s/^nic-wlan[0-9]\+$/nic-$WLAN/" /etc/ppp/peers/dsl-provider
+	! pidof pppd > /dev/null && pon > /dev/null
+fi
+
+# Inicia o mplayer pausado e controlado por um fifo
+mplayer $MUSIC -really-quiet -loop 0 -input file=$FIFO < /dev/null 2> /dev/null &
+echo "pause" > $FIFO
+paused=1
+while true; do
+	# Se pingar deixa o som rolar e espera antes de pingar de novo
+	if ping -c 1 -n $IP > /dev/null 2> /dev/null; then
+		if test "$paused" = "1"; then
+			echo "pause" > $FIFO
+			paused=0
+		fi
+		sleep 5
+	else # Se não pingar para de tocar
+		if test "$paused" = "0"; then
+			echo "pause" > $FIFO
+			paused=1
+		fi
+		if test ! "$PPP" = "0"; then # Se PPPoE tenta reavivar a conexão e a rota
+			if pidof pppd > /dev/null; then
+				if ! route -n | grep ppp | grep UG > /dev/null; then
+					gw=$(ifconfig ppp0 | grep P-a-P | cut -d : -f 3 | cut -d ' ' -f 1)
+					[ $gw ] && sudo route add default gw "$gw"
+				fi
+			else
+				pon > /dev/null
+			fi
+		fi
+	fi
+done
