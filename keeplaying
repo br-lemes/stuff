@@ -5,24 +5,65 @@
 #
 # É um keepalive musical. Deixa o som rolar enquanto tiver uma conexão de
 # Internet. Se cair a conexão para de tocar e espera pela conexão para
-# começar tudo de novo.
+# começar tudo de novo. Usa o mplayer para tocar música.
 #
-# Se você usa PPPoE sobre wireless também vai tentar restabelecer o pppd e
-# a maldita rota que vive desaparecendo do mapa. Aceita um parâmetro na linha
-# de comando para receber a wlan certa (o parâmetro precisa estar no formato
-# wlan*, onde * é o número da interface).
+# Se você usa PPPoE, também vai tentar restabelecer o pppd e o maldito
+# gateway padrão que vive desaparecendo do mapa. Minha conexão é PPPoE sobre
+# rede sem fio (wireless), não tenho como testar se PPPoE sobre rede com fios
+# vai funcionar, mas não vejo porque não.
+#
+# Uso:
+# * keeplaying start
+#       Inicia no modo tocar música enquanto tiver conexão. Não tenta conectar,
+#       só verifica a conexão. Use se sua Internet já chega pronta, seja por
+#       cabo ou wireless (exemplo: se você tem um modem ADSL roteado). Não há
+#       nenhuma utilidade nisso a não ser quando sua Internet cai e você quer
+#       ser avisado quando voltar.
+# * keeplaying stop
+#       Mesmo que killall keeplaying, mas sem usar killall.
+#       O keeplaying tem um trap que também mata o mplayer.
+# * keeplaying restart
+#       Mesmo que killall -HUP keeplaying, mas sem usar killall.
+#       O keeplaying tem um trap que mata o mplayer, roda uma nova cópia
+#       de si mesmo com o mesmo parâmetro (start ou eth0|wlan0) e sai.
+#       Se o keeplaying não já estiver rodando, restart não vai fazer nada
+#       porque ele não sabe se você quer start ou eth0|wlan0.
+# * keeplaying interface (wlan? ou eth? ou seja o que for)
+#       Define qual a interface para PPPoE. Nesse modo, no caso de cair a
+#       conexão o keeplaying vai reconectar. Geralmente não é a conexão que
+#       cai, mas o gateway padrão que some da tabela de rotas não sei porque.
+#       O pppd geralmente se mantem ativo corretamente. Para funcionar você já
+#       deve ter sua conexão Ethernet estabelecida e seu dsl-provider
+#       configurado (pppoeconf). O parâmetro só vai trocar sua interface
+#       (a nic-*).
+#
+# ATENÇÃO: há dois comandos que precisam de privilégios do root. Usei sudo para
+# isso. Um deles é o sed no /etc/ppp/peers/dsl-provider. O outro é o route.
+# Se você não estiver usando PPPoE ou estiver no sudoers sem senha, pode pular
+# essa parte. Se não estiver no sudoers, não vai funcionar. Se estiver no
+# sudoers e precisar de senha vai atrapalhar o funcionamento em segundo plano.
+# Eu configurei meu sudoers para não pedir senha para o route, mas o sed que
+# só usa uma vez ou outra (quando troca de interface) deixo pedindo senha
+# normalmente. Para não pedir senha no comando route adicionei o seguinte ao
+# meu /etc/sudoers (breno é meu nome de usuário, troque pelo seu):
+# breno ALL=NOPASSWD: /sbin/route
 #
 # Histórico:
 #
-# 12-04-2012 Versão inicial
-# 13-04-2012 Suporte experimental a PPPoE
-# 14-04-2012 Suporte funcional a PPPoE sobre wireless. Porém lida somente com
-#            PPPoE, a conexão wireless precisa já estar estabelecida.
-# 15-04-2012 * Especificado dsl-provider ao pon, o padrão é provider e eu tinha
+# 12-04-2012 * Versão inicial.
+# 13-04-2012 * Suporte experimental a PPPoE.
+# 14-04-2012 * Suporte funcional a PPPoE sobre wireless. Porém lida somente com
+#              PPPoE, a conexão wireless precisa já estar estabelecida;
+#            * Especificado dsl-provider ao pon, o padrão é provider e eu tinha
 #              um link para facilitar digitar na linha de comando, mas é mais
 #              correto usar o comando completo; e
-#            * Não escreve desnecessariamente em dsl-provider se wlan* já
-#              corretamente lá.
+#            * Não escreve desnecessariamente em dsl-provider se a interface
+#              correta já estiver corretamente lá.
+# 18-04-2012 * Melhorias no código, criando start, stop e restart, suporte a
+#              playlist e permitir rodar somente uma instância do keeplaying;
+#            * Generalizado o PPPoE, possivelmente funcione com qualquer
+#              interface Ethernet, não somente wireless, mas não foi testado; e
+#            * Melhoria nas descrições e instruções.
 #
 # Licença: WTFPL
 #
@@ -44,51 +85,118 @@
 #
 # Configurações
 #
-IP=8.8.8.8                        # IP para pingar
-MUSIC=$HOME/Música/Paranoid.mp3   # Música para tocar
-FIFO=$HOME/.mplayer/fifo          # MPlayer fifo
+
+IP="8.8.8.8"                        # IP para pingar
+FIFO="$HOME/.mplayer/fifo"          # FIFO para o MPlayer
+
+# Música para tocar. Somente uma ou um arquivo contendo uma lista.
+# Você pode criar uma lista com find . -name "*.mp3" > playlist
+MUSIC="$HOME/playlist"
+#MUSIC="$HOME/Música/Paranoid.mp3"
+
+# Tocar aleatoriamente, sempre na mesma ordem é chato :(
+SHUFFLE=1
+
+# Filtro para descobrir o gateway. Com o pppd rodando, digite ifconfig ppp e
+# veja se aparece P-a-P (português) ou P-t-P (inglês) e coloque aqui.
+FILTRO="P-a-P"
 #
 ################################################################################
 #
 # Restante do código
 #
-PPP=0
 
-# Se passar mais que um parâmetro sai silenciosamente
-[ "$#" -gt "1" ] && exit 
+# Lista de todas as interfaces de rede
+iface=$(ls /sys/class/net | sed '/lo\|ppp.*/d')
 
-# Se o parâmetro 1 for wlan* (onde * são apenas números), ativa PPPoE e
-# acerta o dsl-provider com a interface certa e tenta conectar
-if echo "$1" | grep '^wlan[0-9]\+$' > /dev/null; then
-	PPP=1
-	WLAN="$1"
-	! grep -q $WLAN /etc/ppp/peers/dsl-provider && \
-		sudo sed -i "s/^nic-wlan[0-9]\+$/nic-$WLAN/" /etc/ppp/peers/dsl-provider
-	! pidof pppd > /dev/null && pon dsl-provider > /dev/null
+PPP=0 # Modo PPPoE
+
+abort() {
+	echo "$*" >&2
+	exit 1
+}
+
+usage() {
+	echo "Uso: $(basename "$0") [$(echo "$iface" | tr '\n' '|')start|stop|restart]" >&2
+	exit 1
+}
+
+# Se passar mais que um parâmetro sai fora
+if [ "$#" -gt "1" ]; then
+	echo "Parâmetros inválidos $*" >&2
+	usage
 fi
 
-# Inicia o mplayer pausado e controlado por um fifo
-mplayer $MUSIC -really-quiet -loop 0 -input file=$FIFO < /dev/null 2> /dev/null &
-echo "pause" > $FIFO
+# Pega o pid de outro keeplaying que possa estar rodando
+kpid=$(pidof -x -o $$ "$(basename "$0")")
+
+case "$1" in
+	start) ;; # comportamento padrão, não faz nada por enquanto
+	stop) [ "$kpid" ] && kill "$kpid"; exit;;
+	restart) [ "$kpid" ] && kill -HUP "$kpid" || abort "O $(basename "$0") não está rodando."; exit;;
+	*) # liga o modo PPP, acerta a interface do dsl-provider e conecta
+		for i in $iface; do
+			if [ "$1" = "$i" ]; then
+				PPP=1
+				! grep -q "$1" /etc/ppp/peers/dsl-provider && \
+					sudo sed -i "s/^nic-.*$/nic-$1/" /etc/ppp/peers/dsl-provider
+				! pidof pppd > /dev/null && pon dsl-provider > /dev/null
+			fi
+		done
+		if [ "$PPP" = "0" ]; then
+			echo "Interface $1 não encontrada." >&2
+			usage
+		fi
+		;;
+esac
+
+# Se já tiver uma instância rodando sai fora
+[ "$kpid" ] && abort "O $(basename "$0") já está rodando."
+
+# Se não puder ler as músicas cai fora
+[ ! -r "$MUSIC" ] && abort "Não posso ler sua música ou lista."
+
+# Inicia o mplayer controlado por um named pipe (FIFO)
+if test ! -p "$FIFO"; then
+  if ! mkfifo "$FIFO" 2> /dev/null; then
+		abort "Não consigo criar o named pipe (FIFO) $FIFO"
+	fi
+fi
+[ "$SHUFFLE" = 1 ] && SHUFFLE="-shuffle" || unset SHUFFLE
+OPTIONS="-loop 0 -really-quiet -slave -input file=$FIFO"
+if file "$MUSIC" | grep text > /dev/null; then
+	PLAYLIST="-playlist"
+fi
+mplayer "$SHUFFLE" "$PLAYLIST" "$MUSIC" $OPTIONS 2> /dev/null & mpid=$!
+# trap para reiniciar (HUP) e para sair limpo (TERM e INT)
+trap 'kill "$mpid"; "$0" "$1" & exit' HUP
+trap 'kill "$mpid"; exit' TERM INT
+echo "pause" > "$FIFO"
 paused=1
 while true; do
+  # Se o mplayer morrer, ressucite-o! É um hack porque o mplayer não obedece a
+	# opção -loop 0 quando numa playlist no modo slave (bug ou o que?)
+	if ! kill -0 "$mpid" 2> /dev/null; then
+		mplayer "$SHUFFLE" "$PLAYLIST" "$MUSIC" $OPTIONS 2> /dev/null & mpid=$!
+		# Será que precisa pausar? Acho que só vai morrer se tiver tocando
+	fi
 	# Se pingar deixa o som rolar e espera antes de pingar de novo
-	if ping -c 1 -n $IP > /dev/null 2> /dev/null; then
+	if ping -c 5 -n "$IP" > /dev/null 2> /dev/null; then
 		if test "$paused" = "1"; then
-			echo "pause" > $FIFO
+			echo "pause" > "$FIFO"
 			paused=0
 		fi
 		sleep 5
 	else # Se não pingar para de tocar
 		if test "$paused" = "0"; then
-			echo "pause" > $FIFO
+			echo "pause" > "$FIFO"
 			paused=1
 		fi
 		if test ! "$PPP" = "0"; then # Se PPPoE tenta reavivar a conexão e a rota
 			if pidof pppd > /dev/null; then
 				if ! route -n | grep ppp | grep UG > /dev/null; then
 					gw=$(ifconfig ppp0 2> /dev/null | grep P-a-P | cut -d : -f 3 | cut -d ' ' -f 1)
-					[ $gw ] && sudo route add default gw "$gw"
+					[ "$gw" ] && sudo route add default gw "$gw"
 				fi
 			else
 				pon dsl-provider > /dev/null
