@@ -138,7 +138,7 @@ case "$1" in
 		for i in $iface; do
 			if [ "$1" = "$i" ]; then
 				PPP=1
-				! grep -q "$1" /etc/ppp/peers/dsl-provider && \
+				! grep -q "^nic-$1" /etc/ppp/peers/dsl-provider && \
 					sudo sed -i "s/^nic-.*$/nic-$1/" /etc/ppp/peers/dsl-provider
 				! pidof pppd > /dev/null && pon dsl-provider > /dev/null
 			fi
