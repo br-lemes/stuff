@@ -64,6 +64,10 @@
 #            * Generalizado o PPPoE, possivelmente funcione com qualquer
 #              interface Ethernet, não somente wireless, mas não foi testado; e
 #            * Melhoria nas descrições e instruções.
+# 21-04-2012 * Correção quando o parâmetro for eth0. Coloquei minha conexão
+#              wireless num roteador em modo bridge e liguei em meu computador
+#              com fio, então fiz PPPoE na eth0. Então qualquer PPPoE deverá
+#              funcionar agora.
 #
 # Licença: WTFPL
 #
