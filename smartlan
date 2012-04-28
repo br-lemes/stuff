@@ -30,13 +30,15 @@
 # Este é o IP padrão para este modelo de roteador
 status="http://192.168.1.254/cgi-bin/status/"
 
-lynx -source "$status" | grep 'name="WAN_LINK_STATUS"' | cut -d = -f 4 | cut -d \" -f 2
-lynx -source "$status" | grep 'name="WAN_IP_ADDR"' | cut -d = -f 4 | cut -d \" -f 2
-conn_time=$(lynx -source "$status" | grep 'name="INTERNET_CONN_TIME"' | cut -d = -f 4 | cut -d \" -f 2)
-day=$((($conn_time - $conn_time % 86400) / 86400))
-conn_time=$(($conn_time - $day * 86400))
-hr=$((($conn_time - $conn_time % 3600) / 3600))
-conn_time=$(($conn_time - $hr * 3600))
-min=$((($conn_time - $conn_time % 60) / 60))
-sec=$(($conn_time - $min * 60))
+source=$(lynx -source "$status" 2> /dev/null)
+[ "$?" != "0" ] && exit 1
+eval $(echo "$source" | grep '\(name="WAN_LINK_STATUS"\|name="WAN_IP_ADDR"\|name="INTERNET_CONN_TIME"\)' | sed 's/^.*name="//;s/" value=/=/;s/>.*$//')
+echo "$WAN_LINK_STATUS"
+echo "$WAN_IP_ADDR"
+day=$((($INTERNET_CONN_TIME - $INTERNET_CONN_TIME % 86400) / 86400))
+INTERNET_CONN_TIME=$(($INTERNET_CONN_TIME - $day * 86400))
+hr=$((($INTERNET_CONN_TIME - $INTERNET_CONN_TIME % 3600) / 3600))
+INTERNET_CONN_TIME=$(($INTERNET_CONN_TIME - $hr * 3600))
+min=$((($INTERNET_CONN_TIME - $INTERNET_CONN_TIME % 60) / 60))
+sec=$(($INTERNET_CONN_TIME - $min * 60))
 printf "%d dia(s) %d hora(s) %d minuto(s) %d segundo(s)\n" $day $hr $min $sec
