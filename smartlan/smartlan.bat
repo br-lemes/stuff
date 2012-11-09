@@ -1,2 +1,2 @@
-﻿@ECHO OFF
-start wlua52.exe smartlan.lua
+@ECHO OFF
+start wlua5.1.exe smartlan.lua
