@@ -10,6 +10,7 @@
 -- 27-04-2012 * Versão inicial (shell script lynx)
 -- 28-10-2012 * Versão IUP Lua (wget)
 -- 04-11-2012 * Versão Lua Socket
+-- 11-04-2013 * Bug fix + signal
 --
 -- Licença: WTFPL
 --
