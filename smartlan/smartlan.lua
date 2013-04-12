@@ -106,9 +106,10 @@ function timer:action_cb()
 	if not source or source == "" then
 		dg.traytip = "Please wait..."
 	else
-		local status = source:match('name="WAN_LINK_STATUS" value="(.-)"')
-		local ipaddr = source:match('name="WAN_IP_ADDR" value="(.-)"')
-		local conn_time = source:match('name="INTERNET_CONN_TIME" value="(.-)"')
+		local signal = tostring(source:match('name="WLAN0_RSSI" value="(.-)"'))
+		local status = tostring(source:match('name="WAN_LINK_STATUS" value="(.-)"'))
+		local ipaddr = tostring(source:match('name="WAN_IP_ADDR" value="(.-)"'))
+		local conn_time = source:match('name="INTERNET_CONN_TIME" value="(.-)"') or 0
 
 		conn_day = (conn_time - conn_time % 86400) / 86400
 		conn_time = conn_time - conn_day * 86400
@@ -117,9 +118,12 @@ function timer:action_cb()
 		conn_min = (conn_time - conn_time % 60) / 60
 		conn_sec = conn_time - conn_min * 60
 
-		dg.traytip = status .. '\n' .. ipaddr .. '\n' .. 
-			string.format('%d dia(s) %d hora(s) %d minuto(s) %d segundo(s)',
-			conn_day, conn_hr, conn_min, conn_sec)
+		dg.traytip = string.format(
+			'Status: %s\n' ..
+			'Sinal: %s\n' ..
+			'IP: %s\n' ..
+			'%d dia(s) %d hora(s) %d minuto(s) %d segundo(s)',
+			status, signal, ipaddr,	conn_day, conn_hr, conn_min, conn_sec)
 	end
 	local connected = dg.traytip:find("Connected")
 	if connected and dg.trayimage ~= yesimg  then
