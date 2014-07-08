@@ -1,6 +1,7 @@
+#!/usr/bin/env lua
 
-cfg1 = "config"
-cfg2 = "simpler/linux/.config"
+cfg1 = arg[1] or "config~"
+cfg2 = arg[2] or "config"
 
 table1 = { }
 table2 = { }
