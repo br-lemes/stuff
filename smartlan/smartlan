@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012 Breno Ramalho Lemes <breno@br-lemes.net>
+# Copyright (c) 2012,14 Breno Ramalho Lemes <breno@br-lemes.net>
 # http://www.br-lemes.net/
 #
 # Verifica o status da conexão de internet, o IP e o tempo conectado do meu
@@ -9,6 +9,7 @@
 # Histórico:
 #
 # 27-04-2012 * Versão inicial.
+# 10-07-2014 * IP do roteador na variável de ambiente $SMARTLAN
 #
 # Licença: WTFPL
 #
@@ -28,9 +29,10 @@
 #
 
 # Este é o IP padrão para este modelo de roteador
-status="http://192.168.1.254/cgi-bin/status/"
+[ -z "$SMARTLAN" ] && SMARTLAN="192.168.1.254"
+statusurl="http://$SMARTLAN/cgi-bin/status/"
 
-source=$(lynx -source "$status" 2> /dev/null)
+source=$(lynx -source "$statusurl" 2> /dev/null)
 [ "$?" != "0" ] && exit 1
 eval $(echo "$source" | grep '\(name="WAN_LINK_STATUS"\|name="WAN_IP_ADDR"\|name="INTERNET_CONN_TIME"\)' | sed 's/^.*name="//;s/" value=/=/;s/>.*$//')
 echo "$WAN_LINK_STATUS"

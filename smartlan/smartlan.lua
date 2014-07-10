@@ -1,4 +1,5 @@
--- Copyright (c) 2012 Breno Ramalho Lemes <breno@br-lemes.net>
+#!/usr/bin/lua5.1
+-- Copyright (c) 2012,14 Breno Ramalho Lemes <breno@br-lemes.net>
 -- http://www.br-lemes.net/
 
 -- Verifica o status da conexão de internet, o IP e o tempo conectado do meu
@@ -11,6 +12,7 @@
 -- 28-10-2012 * Versão IUP Lua (wget)
 -- 04-11-2012 * Versão Lua Socket
 -- 11-04-2013 * Bug fix + signal
+-- 10-07-2014 * IP do roteador na variável de ambiente SMARTLAN
 --
 -- Licença: WTFPL
 --
@@ -31,6 +33,7 @@
 require( "iuplua" )
 require("socket.http")
 
+statusurl="http://"..(os.getenv("SMARTLAN") or "192.168.1.254").."/cgi-bin/status/"
 socket.http.TIMEOUT = 1
 
 local yesimg = iup.imagergba {
@@ -103,7 +106,7 @@ dg = iup.dialog{title = "Smart Lan APRIO150", size = "QUARTERxQUARTER",
 
 timer = iup.timer{time=1000}
 function timer:action_cb()
-	local source = socket.http.request("http://192.168.1.254/cgi-bin/status/")
+	local source = socket.http.request(statusurl)
 	if not source or source == "" then
 		dg.traytip = "Please wait..."
 	else
