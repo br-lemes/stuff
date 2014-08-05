@@ -13,6 +13,7 @@
 -- 04-11-2012 * Versão Lua Socket
 -- 11-04-2013 * Bug fix + signal
 -- 10-07-2014 * IP do roteador na variável de ambiente SMARTLAN
+-- 04-08-2014 * IP do roteador também como argumento
 --
 -- Licença: WTFPL
 --
@@ -33,7 +34,7 @@
 require( "iuplua" )
 require("socket.http")
 
-statusurl="http://"..(os.getenv("SMARTLAN") or "192.168.1.254").."/cgi-bin/status/"
+statusurl="http://"..(arg[1] or os.getenv("SMARTLAN") or "192.168.1.254").."/cgi-bin/status/"
 socket.http.TIMEOUT = 1
 
 local yesimg = iup.imagergba {
