@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012 Breno Ramalho Lemes <breno@br-lemes.net>
+# Copyright (c) 2012,17 Breno Ramalho Lemes <breno@br-lemes.net>
 # http://www.br-lemes.net/
 #
 # É um keepalive musical. Deixa o som rolar enquanto tiver uma conexão de
@@ -68,22 +68,7 @@
 #              wireless num roteador em modo bridge e liguei em meu computador
 #              com fio, então fiz PPPoE na eth0. Então qualquer PPPoE deverá
 #              funcionar agora.
-#
-# Licença: WTFPL
-#
-#            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-#                    Version 2, December 2004
-#
-# Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
-#
-# Everyone is permitted to copy and distribute verbatim or modified
-# copies of this license document, and changing it is allowed as long
-# as the name is changed.
-#
-#            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-#   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-#
-#  0. You just DO WHAT THE FUCK YOU WANT TO.
+# 06-10-2017 * Licença MIT
 #
 ################################################################################
 #
