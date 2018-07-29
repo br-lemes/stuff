@@ -6,6 +6,8 @@ Compare two Linux kernel config files entry by entry.
 ### keeplaying
 Play music while connected to Internet (stop when disconnected,
 resume when reconnected).
+### lspkg
+List all installed packages in size order on DEB-based distros.
 ### smartlan
 Show Smart Lan APRIO150 status.
 ### winpopen
