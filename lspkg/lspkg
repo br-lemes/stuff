@@ -1,0 +1,33 @@
+#!/usr/bin/lua
+
+local ignore = { }
+
+if arg[1] then
+	local f = io.open(arg[1])
+	for line in f:lines() do
+		ignore[line] = true
+	end
+	f:close()
+end
+
+local pk = { }
+local pm = { }
+
+local f = io.popen("dpkg-query -W --showformat='${Installed-Size}\t${Package}\n'")
+for line in f:lines() do
+	local s, n = line:match("(%d*)\t(.*)")
+	if s == "" then s = "0" end
+	if not ignore[n] then
+		if tonumber(s) < 1024 then
+			table.insert(pk, string.format("%4dK\t%s", s, n))
+		else
+			table.insert(pm, string.format("%4dM\t%s", s / 1024, n))
+		end
+	end
+end
+f:close()
+
+table.sort(pk)
+table.sort(pm)
+for i, v in ipairs(pk) do print(v) end
+for i, v in ipairs(pm) do print(v) end
