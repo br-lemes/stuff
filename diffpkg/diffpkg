@@ -1,0 +1,64 @@
+#!/usr/bin/env lua
+
+pkg1  = arg[1] or "lspkg~"
+pkg2  = arg[2] or "lspkg"
+black = arg[3]
+
+table1 = { }
+table2 = { }
+table3 = { }
+tableb = { }
+tablek = { }
+tablem = { }
+
+if black then
+	f = io.open(black)
+	for line in f:lines() do
+		tableb[line] = true
+	end
+end
+
+f = io.open(pkg1)
+for line in f:lines() do
+	local s, n = line:match('(.*)	(.*)')
+	if s and n and not tableb[n] then table1[n] = s end
+end
+f:close()
+
+f = io.open(pkg2)
+for line in f:lines() do
+	local s, n = line:match('(.*)	(.*)')
+	if s and n and not tableb[n] then table2[n] = s end
+end
+f:close()
+
+for k,v in pairs(table1) do
+	if not table2[k] then
+		table3[k] = v
+	end
+end
+
+for k,v in pairs(table2) do
+	if not table1[k] then
+		table3[k] = v
+	end
+end
+
+for k,v in pairs(table3) do
+	local t1 = table1[k]
+	local t2 = table2[k]
+	if t1 then
+		if t1:match('K$') then table.insert(tablek, string.format('-%s\t%s', v, k)) end
+		if t1:match('M$') then table.insert(tablem, string.format('-%s\t%s', v, k)) end
+	end
+	if t2 then
+		if t2:match('K$') then table.insert(tablek, string.format('+%s\t%s', v, k)) end
+		if t2:match('M$') then table.insert(tablem, string.format('+%s\t%s', v, k)) end
+	end
+end
+
+table.sort(tablek)
+table.sort(tablem)
+
+for i,v in ipairs(tablek) do print(v) end
+for i,v in ipairs(tablem) do print(v) end

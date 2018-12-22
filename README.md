@@ -3,6 +3,8 @@ Bunch of random small stuff.
 
 ### cfgcheck
 Compare two Linux kernel config files entry by entry.
+### diffpkg
+Compare two installed packages list from lspkg.
 ### keeplaying
 Play music while connected to Internet (stop when disconnected,
 resume when reconnected).
