@@ -1,0 +1,13 @@
+#!/usr/bin/lua
+
+if #arg ~= 1 then os.exit(1) end
+if not arg[1]:match("^%d%d/%d%d/%d%d%d%d$") then os.exit(1) end
+local randtime = { }
+randtime.day, randtime.month, randtime.year = arg[1]:match("^(%d%d)/(%d%d)/(%d%d%d%d)$")
+math.randomseed(os.time())
+math.random(10)
+randtime.hour = math.random(0, 23)
+randtime.min = math.random(0, 59)
+randtime.sec = math.random(0, 59)
+print(os.date("%c -0400", os.time(randtime)))
+
