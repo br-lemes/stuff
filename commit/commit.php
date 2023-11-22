@@ -22,6 +22,7 @@ $since = "--since='$argv[1]T00:00:00'";
 $until = "--until='$argv[1]T23:59:59'";
 $commit = shell_exec("git log -1 --format=%ct $since $until");
 if (is_numeric($commit)) {
+    $commit = $commit - 4 * 60 * 60;
     $date = date('Y-m-d H:i:s', $commit + mt_rand(10 * 60, 60 * 60));
 } else {
     $date = date(
